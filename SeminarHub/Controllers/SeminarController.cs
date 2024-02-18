@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using SeminarHub.Data;
 using SeminarHub.Data.Models;
 using SeminarHub.Models.ViewModels;
@@ -244,6 +245,42 @@ namespace SeminarHub.Controllers
             return View(model);
         }
         //Delete method
+        [HttpGet]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var seminar = await data.Seminars.FindAsync(id);
+            if (seminar == null)
+            {
+                return BadRequest();
+            }
+            if (seminar.OrganizerId != GetUser())
+            {
+                return Unauthorized();
+            }
+            var model = new DeleteViewModel()
+            {
+                Id = seminar.Id,
+                Topic = seminar.Topic,
+                DateAndTime = seminar.DateAndTime
+            };
+            return View(model);
+        }
+        [HttpPost]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var seminar = await data.Seminars.FindAsync(id);
+            if (seminar == null)
+            {
+                return NotFound();
+            }
+            if (seminar.OrganizerId != GetUser())
+            {
+                return Unauthorized();
+            }
+            data.Seminars.Remove(seminar);
+            await data.SaveChangesAsync();
+            return RedirectToAction("All", "Seminar");
+        }
         private string GetUser()
         {
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
