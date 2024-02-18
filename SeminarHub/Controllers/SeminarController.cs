@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SeminarHub.Data;
 using SeminarHub.Data.Models;
 using SeminarHub.Models.ViewModels;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace SeminarHub.Controllers
@@ -12,7 +13,7 @@ namespace SeminarHub.Controllers
     public class SeminarController : Controller
     {
         private readonly SeminarHubDbContext data;
-        public SeminarController(SeminarHubDbContext context) 
+        public SeminarController(SeminarHubDbContext context)
         {
             data = context;
         }
@@ -47,7 +48,7 @@ namespace SeminarHub.Controllers
                     p.Seminar.DateAndTime,
                     p.Seminar.Category.Name,
                     p.Seminar.Organizer.UserName))
-                .ToListAsync(); 
+                .ToListAsync();
 
             return View(seminars);
         }
@@ -97,7 +98,7 @@ namespace SeminarHub.Controllers
 
             if (sp == null)
             {
-                return BadRequest(); 
+                return BadRequest();
             }
 
             data.SeminarParticipants.Remove(sp);
@@ -112,6 +113,137 @@ namespace SeminarHub.Controllers
             return View(seminarForm);
 
         }
+        [HttpPost]
+        public async Task<IActionResult> Add(FormViewModel model)
+        {
+            DateTime dateAndTime = DateTime.Now;
+
+            //Check date and time format
+            if (!DateTime.TryParseExact(
+                model.DateAndTime,
+                ValidationConstants.DateTimeFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out dateAndTime))
+            {
+                ModelState.AddModelError(nameof(model.DateAndTime), $"Invalid date: Format must be {ValidationConstants.DateTimeFormat}");
+            }
+            if (model.Duration < 30 || model.Duration > 180)
+            {
+                ModelState.AddModelError(nameof(model.Duration), "Invalid duration time: Duration time must be between 30 and 180 min");
+            }
+            if (!ModelState.IsValid)
+            {
+                model.Categories = await GetCategories();
+                return View(model);
+            }
+
+            var entity = new Seminar()
+            {
+                Topic = model.Topic,
+                Lecturer = model.Lecturer,
+                Details = model.Details,
+                DateAndTime = dateAndTime,
+                Duration = model.Duration,
+                CategoryId = model.CategoryId,
+                OrganizerId = GetUser()
+            };
+            await data.Seminars.AddAsync(entity);
+            await data.SaveChangesAsync();
+            return RedirectToAction("All", "Seminar");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var seminar = await data.Seminars.FindAsync(id);
+            if (seminar == null)
+            {
+                return BadRequest();
+            }
+
+            var userId = GetUser();
+            if (seminar.OrganizerId != userId)
+            {
+                return Unauthorized();
+            }
+
+            var model = new FormViewModel()
+            {
+                Topic = seminar.Topic,
+                Lecturer = seminar.Lecturer,
+                Details = seminar.Details,
+                DateAndTime = seminar.DateAndTime.ToString(ValidationConstants.DateTimeFormat),
+                Duration = seminar.Duration,
+                CategoryId = seminar.CategoryId
+            };
+            model.Categories = await GetCategories();
+
+            return View(model);
+        }
+        [HttpPost]
+        public async Task<IActionResult> Edit(FormViewModel model, int id)
+        {
+            var seminar = await data.Seminars.FindAsync(id);
+            if (seminar == null)
+            {
+                return BadRequest();
+            }
+            var userId = GetUser();
+            if (seminar.OrganizerId != userId)
+            {
+                return Unauthorized();
+            }
+
+            DateTime dateAndTime = DateTime.Now;
+
+            //Check date and time format
+            if (!DateTime.TryParseExact(
+                model.DateAndTime,
+                ValidationConstants.DateTimeFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out dateAndTime))
+            {
+                ModelState.AddModelError(nameof(model.DateAndTime), $"Invalid date: Format must be {ValidationConstants.DateTimeFormat}");
+            }
+
+            if (model.Duration < 30 || model.Duration > 180)
+            {
+                ModelState.AddModelError(nameof(model.Duration), "Invalid duration time: Duration time must be between 30 and 180 min");
+            }
+            seminar.Topic = model.Topic;
+            seminar.Lecturer = model.Lecturer;
+            seminar.Details = model.Details;
+            seminar.DateAndTime = dateAndTime;
+            seminar.Duration = model.Duration;
+            seminar.CategoryId = model.CategoryId;
+
+            await data.SaveChangesAsync();
+            return RedirectToAction("All", "Seminar");
+        }
+        //Details method
+        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            var model = await data.Seminars
+                .AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => new DetailsViewModel()
+                {
+                    Id = s.Id,
+                    Topic = s.Topic,
+                    DateAndTime = s.DateAndTime.ToString(ValidationConstants.DateTimeFormat),
+                    Duration = s.Duration,
+                    Lecturer = s.Lecturer,
+                    Category = s.Category.Name,
+                    Details = s.Details,
+                    Organizer = s.Organizer.UserName
+
+                }).FirstOrDefaultAsync();
+            return View(model);
+        }
+        //Delete method
         private string GetUser()
         {
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
