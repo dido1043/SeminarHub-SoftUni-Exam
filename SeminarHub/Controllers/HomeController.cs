@@ -13,8 +13,12 @@ namespace SeminarHub.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            if (User.Identity.IsAuthenticated && User?.Identity != null)
+            {
+                return RedirectToAction("All", "Seminar");
+            }
             return View();
         }
 

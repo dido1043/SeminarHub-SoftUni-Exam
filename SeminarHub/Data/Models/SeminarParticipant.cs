@@ -15,13 +15,4 @@ namespace SeminarHub.Data.Models
         [ForeignKey(nameof(ParticipantId))]
         public IdentityUser Participant { get; set; }
     }
-    /*
-     · Has SeminarId – integer, PrimaryKey, foreign key (required)
-
-· Has Seminar – Seminar
-
-· Has ParticipantId – string, PrimaryKey, foreign key (required)
-
-· Has Participant – IdentityUser
-     */
 }
