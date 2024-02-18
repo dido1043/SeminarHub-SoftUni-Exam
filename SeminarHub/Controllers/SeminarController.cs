@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
 using SeminarHub.Data;
 using SeminarHub.Data.Models;
 using SeminarHub.Models.ViewModels;
