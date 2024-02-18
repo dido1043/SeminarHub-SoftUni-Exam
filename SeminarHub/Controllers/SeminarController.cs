@@ -78,9 +78,54 @@ namespace SeminarHub.Controllers
             await data.SaveChangesAsync();
             return RedirectToAction("Joined", "Seminar");
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> Leave(int id)
+        {
+            var seminar = await data.Seminars
+                .Where(s => s.Id == id)
+                .Include(sp => sp.SeminarParticipants)
+                .FirstOrDefaultAsync();
+            if (seminar == null)
+            {
+                return BadRequest();
+            }
+
+            var userId = GetUser();
+            var sp = seminar.SeminarParticipants.FirstOrDefault(p => p.ParticipantId == userId);
+
+            if (sp == null)
+            {
+                return BadRequest(); 
+            }
+
+            data.SeminarParticipants.Remove(sp);
+            await data.SaveChangesAsync();
+            return RedirectToAction("Joined", "Seminar");
+        }
+        [HttpGet]
+        public async Task<IActionResult> Add()
+        {
+            var seminarForm = new FormViewModel();
+            seminarForm.Categories = await GetCategories();
+            return View(seminarForm);
+
+        }
         private string GetUser()
         {
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        }
+        private async Task<IEnumerable<CategoryViewModel>> GetCategories()
+        {
+            return await data.Categories
+                .AsNoTracking()
+                .Select(t => new CategoryViewModel()
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                })
+                .ToListAsync();
         }
     }
 }
