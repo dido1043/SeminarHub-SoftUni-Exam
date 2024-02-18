@@ -16,7 +16,14 @@ namespace SeminarHub
                 options.UseSqlServer(connectionString));
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            builder.Services.AddDefaultIdentity<IdentityUser>(op =>
+            {
+                op.SignIn.RequireConfirmedAccount = false;
+                op.Password.RequireDigit = false;
+                op.Password.RequireNonAlphanumeric = false;
+                op.Password.RequireUppercase = false;
+
+            })
                 .AddEntityFrameworkStores<SeminarHubDbContext>();
             builder.Services.AddControllersWithViews();
 
